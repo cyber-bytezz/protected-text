@@ -27,23 +27,25 @@ export default function EncryptionVisualizer() {
     setCiphertext(encrypted);
   }, [plaintext]);
 
-  // Auto-play animation
+  // Auto-play animation with improved timing and state management
   useEffect(() => {
     if (isPlaying) {
-      const timer = setTimeout(() => {
-        if (step < 4) {
-          setStep(step + 1);
-        } else {
-          setStep(0);
-          setIsPlaying(false);
-        }
-      }, 1500);
-      return () => clearTimeout(timer);
+      setStep(0); // Reset to first step when starting animation
+      const timer = setInterval(() => {
+        setStep(prevStep => {
+          if (prevStep < 4) {
+            return prevStep + 1;
+          } else {
+            setIsPlaying(false);
+            return 0;
+          }
+        });
+      }, 2000); // Increased duration for better visibility
+      return () => clearInterval(timer);
     }
-  }, [step, isPlaying]);
+  }, [isPlaying]); // Only depend on isPlaying state
 
   const startAnimation = () => {
-    setStep(0);
     setIsPlaying(true);
     setManualMode(false);
   };

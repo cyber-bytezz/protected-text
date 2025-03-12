@@ -1,4 +1,4 @@
-\"use client";
+"use client";
 
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence, useAnimation, useInView } from 'framer-motion';
@@ -9,7 +9,12 @@ import * as THREE from 'three';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom, ChromaticAberration, Noise } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
-import { Text, Environment, Float, MeshDistortMaterial, MeshWobbleMaterial, Sphere } from '@react-three/drei';
+
+// Helper function to get random color
+function getRandomColor() {
+  const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#f59e0b', '#10b981'];
+  return colors[Math.floor(Math.random() * colors.length)];
+}
 
 // Define particle types for different visualization effects
 interface Particle {
@@ -47,24 +52,36 @@ interface DataPacket {
   rotationSpeed: number;
 }
 
-// 3D Text component with glow effect
-function GlowingText({ text, position, color, fontSize = 0.5, rotation = [0, 0, 0] }: 
+// Simple text display using basic THREE.js mesh
+function SimpleTextDisplay({ text, position, color, fontSize = 0.5, rotation = [0, 0, 0] }: 
   { text: string; position: [number, number, number]; color: string; fontSize?: number; rotation?: [number, number, number] }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  // Create floating effect manually
+  useFrame((state) => {
+    if (meshRef.current) {
+      // Simple floating animation
+      meshRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 2) * 0.1;
+      // Gentle rotation
+      meshRef.current.rotation.x = rotation[0] + Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
+      meshRef.current.rotation.y = rotation[1] + Math.sin(state.clock.elapsedTime) * 0.05;
+    }
+  });
+  
   return (
-    <Float speed={2} rotationIntensity={0.2} floatIntensity={0.5}>
-      <Text
-        position={position}
-        rotation={rotation}
-        fontSize={fontSize}
-        color={color}
-        font="/fonts/Inter-Bold.woff"
-        characters="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{};:'\",./<>?`~"
-        material={new THREE.MeshStandardMaterial({ emissive: color, emissiveIntensity: 2 })}
-      >
-        {text}
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2} toneMapped={false} />
-      </Text>
-    </Float>
+    <mesh
+      ref={meshRef}
+      position={position}
+      rotation={rotation}
+    >
+      <boxGeometry args={[text.length * 0.1 * fontSize, fontSize, 0.05]} />
+      <meshStandardMaterial 
+        color={color} 
+        emissive={color} 
+        emissiveIntensity={2} 
+        toneMapped={false} 
+      />
+    </mesh>
   );
 }
 
@@ -81,16 +98,10 @@ function EncryptionSphere({ step, color }: { step: number; color: string }) {
       meshRef.current.scale.x = THREE.MathUtils.lerp(meshRef.current.scale.x, 1.2, 0.05);
       meshRef.current.scale.y = THREE.MathUtils.lerp(meshRef.current.scale.y, 1.2, 0.05);
       meshRef.current.scale.z = THREE.MathUtils.lerp(meshRef.current.scale.z, 1.2, 0.05);
-      
-      // Pulse effect during encryption
-      meshRef.current.material.distort = 0.4 + Math.sin(state.clock.elapsedTime * 2) * 0.2;
     } else {
       meshRef.current.scale.x = THREE.MathUtils.lerp(meshRef.current.scale.x, 1.0, 0.05);
       meshRef.current.scale.y = THREE.MathUtils.lerp(meshRef.current.scale.y, 1.0, 0.05);
       meshRef.current.scale.z = THREE.MathUtils.lerp(meshRef.current.scale.z, 1.0, 0.05);
-      
-      // Subtle movement when not in encryption step
-      meshRef.current.material.distort = 0.2 + Math.sin(state.clock.elapsedTime) * 0.1;
     }
     
     // Rotation
@@ -105,16 +116,13 @@ function EncryptionSphere({ step, color }: { step: number; color: string }) {
       onPointerOut={() => setHovered(false)}
     >
       <sphereGeometry args={[1, 64, 64]} />
-      <MeshDistortMaterial
+      <meshStandardMaterial
         color={color}
         envMapIntensity={0.8}
-        clearcoat={0.8}
-        clearcoatRoughness={0.2}
         metalness={0.5}
-        distort={0.2}
-        speed={5}
         roughness={0.2}
-        toneMapped={false}
+        emissive={color}
+        emissiveIntensity={0.2}
       />
     </mesh>
   );
@@ -184,158 +192,73 @@ function DataPackets({ packets, step }: { packets: DataPacket[]; step: number })
   );
 }
 
-// Binary code particles
-function BinaryParticles({ step }: { step: number }) {
-  const particles = useMemo(() => {
-    const temp = [];
-    const count = 100;
-    
-    for (let i = 0; i < count; i++) {
-      const binary = Math.random() > 0.5 ? '1' : '0';
-      const position: [number, number, number] = [
-        (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 10
-      ];
-      const scale = Math.random() * 0.2 + 0.1;
-      const speed = Math.random() * 0.02 + 0.01;
-      const rotationSpeed = Math.random() * 0.01;
-      
-      temp.push({ binary, position, scale, speed, rotationSpeed });
+// Add the default export for the component
+export default function HyperEncryptionVisualizer() {
+  // Component implementation will go here
+  const [step, setStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [packets, setPackets] = useState<DataPacket[]>([]);
+  
+  // Initialize data packets
+  useEffect(() => {
+    const newPackets: DataPacket[] = [];
+    for (let i = 0; i < 20; i++) {
+      newPackets.push({
+        id: i,
+        progress: Math.random(),
+        size: Math.random() * 2 + 1,
+        color: getRandomColor(),
+        speed: Math.random() * 0.5 + 0.2,
+        path: Math.random() > 0.6 ? 'encrypt' : Math.random() > 0.5 ? 'transmit' : 'store',
+        pulsePhase: Math.random() * Math.PI * 2,
+        rotationSpeed: Math.random() * 0.02 + 0.01
+      });
     }
-    
-    return temp;
+    setPackets(newPackets);
   }, []);
   
-  const textRef = useRef<THREE.Group[]>([]);
-  
-  useFrame((state) => {
-    // Only show during encryption step
-    if (step !== 2) return;
-    
-    particles.forEach((particle, i) => {
-      if (!textRef.current[i]) return;
-      
-      // Move particles
-      textRef.current[i].position.x += Math.sin(state.clock.elapsedTime + i) * particle.speed;
-      textRef.current[i].position.y += Math.cos(state.clock.elapsedTime + i) * particle.speed;
-      textRef.current[i].position.z += Math.sin(state.clock.elapsedTime * 0.5 + i) * particle.speed;
-      
-      // Rotate particles
-      textRef.current[i].rotation.x += particle.rotationSpeed;
-      textRef.current[i].rotation.y += particle.rotationSpeed * 1.5;
-      textRef.current[i].rotation.z += particle.rotationSpeed * 0.5;
-      
-      // Fade based on distance from center
-      const distance = textRef.current[i].position.length();
-      textRef.current[i].scale.setScalar(
-        particle.scale * (1 - Math.min(1, distance / 10))
-      );
-    });
-  });
+  // Auto-play animation
+  useEffect(() => {
+    if (isPlaying) {
+      const timer = setTimeout(() => {
+        if (step < 4) {
+          setStep(step + 1);
+        } else {
+          setStep(0);
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [step, isPlaying]);
   
   return (
-    <>
-      {particles.map((particle, i) => (
-        <group
-          key={i}
-          ref={(el) => {
-            if (el) textRef.current[i] = el;
-          }}
-          position={particle.position}
-          scale={[particle.scale, particle.scale, particle.scale]}
+    <div className="w-full h-[500px] relative">
+      <Canvas dpr={[1, 2]} camera={{ position: [0, 0, 5], fov: 50 }}>
+        <ambientLight intensity={0.5} />
+        <pointLight position={[10, 10, 10]} intensity={1} />
+        <EncryptionSphere step={step} color="#8b5cf6" />
+        <DataPackets packets={packets} step={step} />
+        <SimpleTextDisplay 
+          text="Encrypted" 
+          position={[0, 1.5, 0]} 
+          color="#8b5cf6" 
+          fontSize={0.3} 
+        />
+        <EffectComposer>
+          <Bloom luminanceThreshold={0.2} luminanceSmoothing={0.9} height={300} />
+          <ChromaticAberration offset={[0.002, 0.002]} />
+          <Noise opacity={0.02} />
+        </EffectComposer>
+      </Canvas>
+      
+      <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+        <Button 
+          onClick={() => setIsPlaying(!isPlaying)}
+          className="bg-purple-600 hover:bg-purple-700"
         >
-          <Text
-            color={particle.binary === '1' ? '#4ade80' : '#60a5fa'}
-            fontSize={1}
-            font="/fonts/JetBrainsMono-Bold.woff"
-            anchorX="center"
-            anchorY="middle"
-          >
-            {particle.binary}
-            <meshStandardMaterial
-              color={particle.binary === '1' ? '#4ade80' : '#60a5fa'}
-              emissive={particle.binary === '1' ? '#4ade80' : '#60a5fa'}
-              emissiveIntensity={2}
-              toneMapped={false}
-            />
-          </Text>
-        </group>
-      ))}
-    </>
+          {isPlaying ? "Pause" : "Play"} Animation
+        </Button>
+      </div>
+    </div>
   );
 }
-
-// 3D Scene component
-function EncryptionScene({ step, password, plaintext, ciphertext }: 
-  { step: number; password: string; plaintext: string; ciphertext: string }) {
-  const [packets, setPackets] = useState<DataPacket[]>([]);
-  const { camera } = useThree();
-  
-  // Set initial camera position
-  useEffect(() => {
-    camera.position.set(0, 0, 5);
-  }, [camera]);
-  
-  // Generate data packets based on step
-  useEffect(() => {
-    // Clear packets when changing steps
-    if (step === 0 || step === 1) {
-      setPackets([]);
-      return;
-    }
-    
-    // Add packets during encryption and transmission steps
-    const interval = setInterval(() => {
-      if (step === 2 || step === 3 || step === 4) {
-        setPackets(prev => {
-          // Remove completed packets
-          const filtered = prev.filter(p => p.progress < 1);
-          
-          // Add new packets if not too many
-          if (filtered.length < 30) {
-            return [
-              ...filtered,
-              {
-                id: Date.now(),
-                progress: 0,
-                size: Math.random() * 3 + 1,
-                color: getRandomColor(),
-                speed: Math.random() * 0.01 + 0.005,
-                path: step === 2 ? 'encrypt' : step === 3 ? 'transmit' : 'store',
-                pulsePhase: Math.random() * Math.PI * 2,
-                rotationSpeed: Math.random() * 0.1
-              }
-            ];
-          }
-          
-          return filtered;
-        });
-      }
-    }, 100);
-    
-    return () => clearInterval(interval);
-  }, [step]);
-  
-  // Update packet progress
-  useFrame((state, delta) => {
-    setPackets(prev => 
-      prev.map(packet => ({
-        ...packet,
-        progress: packet.progress + packet.speed,
-        pulsePhase: packet.pulsePhase + delta * 5
-      }))
-    );
-    
-    // Camera movement based on step
-    if (step === 0) { // Note step
-      camera.position.x = THREE.MathUtils.lerp(camera.position.x, -2, 0.05);
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0, 0.05);
-      camera.position.z = THREE.MathUtils.lerp(camera.position.z, 5, 0.05);
-    } else if (step === 1) { // Password step
-      camera.position.x = THREE.MathUtils.lerp(camera.position.x, 2, 0.05);
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1, 0.05);
-      camera.position.z = THREE.MathUtils.lerp(camera.position.z, 5, 0.05);
-    } else if (step === 2) { // Encryption step
-      camera.position.x = THREE.MathUtils.lerp(camera.position.x, 0, 0.05);
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0

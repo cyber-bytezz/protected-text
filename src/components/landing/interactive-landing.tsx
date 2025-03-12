@@ -7,7 +7,7 @@ import Features from "./features";
 import HowToUse from "./how-to-use";
 import FAQ from "./faq";
 import { Footer } from "./Footer";
-import EncryptionVisualizer from "./encryption-visualizer";
+import HyperEncryptionVisualizer from "./HyperEncryptionVisualizer";
 
 export default function InteractiveLanding() {
   const [activeSection, setActiveSection] = useState<string>("hero");
@@ -211,7 +211,7 @@ export default function InteractiveLanding() {
             transition={{ duration: 18, repeat: Infinity, repeatType: "reverse" }}
           />
         </div>
-        <EncryptionVisualizer />
+        <HyperEncryptionVisualizer />
       </motion.div>
       
       {/* How To Use Section with enhanced animations */}
